@@ -4,25 +4,20 @@ import yfinance as yf
 import numpy as np
 from scipy.stats import norm
 
-st.set_page_config(page_title="Pro Covered Call Screener", layout="wide")
+st.set_page_config(page_title="Chris's Covered Call Screener", layout="wide")
 
-# --- Custom Styling: 0.6 Opacity for a "Tinted" look instead of solid black ---
+# --- CUSTOM STYLING (Glassy Dark Grey) ---
 st.markdown("""
     <style>
     .stApp {
-        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
-                    url('https://images.unsplash.com/photo-1611974717482-480927df702c?auto=format&fit=crop&q=80&w=2000');
-        background-size: cover;
-        background-attachment: fixed;
-        color: white;
+        background-color: rgba(30, 34, 45, 0.95);
+        color: #e0e6ed;
     }
-    /* Makes the data table look like it's floating on glass */
     [data-testid="stDataFrame"] {
-        background-color: rgba(255, 255, 255, 0.1) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
         border-radius: 10px;
         padding: 5px;
     }
-    /* Fixes header visibility on tinted backgrounds */
     [data-testid="stHeader"] {
         background-color: rgba(0,0,0,0);
     }
@@ -31,22 +26,34 @@ st.markdown("""
 
 # --- Sidebar ---
 with st.sidebar:
-    st.markdown("## 📈 Hamilton Trading")
-    st.image("https://img.icons8.com/color/512/bullish.png", width=80)
+    st.markdown("## 📊 Chris's Covered Call Screener")
     st.write("---")
-    st.caption("Strategy: 0.20-0.30 Delta")
+    st.caption("Targeting 0.20-0.30 Delta | Weeklies")
+    st.image("https://img.icons8.com/color/512/bullish.png", width=60)
 
-# --- Main UI ---
-st.title("🎯 Pro Covered Call Screener")
+# --- Main UI: The Four Pillars Header ---
+st.title("🎯 Market Command Center")
 
-col1, col2 = st.columns(2)
-with col1:
-    vix = yf.Ticker("^VIX").fast_info['lastPrice']
-    st.metric("VIX (Market Vol)", f"{vix:.2f}")
-with col2:
-    spy = yf.Ticker("SPY").fast_info['lastPrice']
-    st.metric("SPY Price", f"${spy:.2f}")
+# Create 4 columns for the top metrics
+m1, m2, m3, m4 = st.columns(4)
 
+try:
+    # Fetching the Big Three + VIX
+    vix_val = yf.Ticker("^VIX").fast_info['lastPrice']
+    spy_val = yf.Ticker("SPY").fast_info['lastPrice']
+    qqq_val = yf.Ticker("QQQ").fast_info['lastPrice']
+    dia_val = yf.Ticker("DIA").fast_info['lastPrice']
+
+    with m1: st.metric("VIX (Fear)", f"{vix_val:.2f}")
+    with m2: st.metric("SPY (S&P)", f"${spy_val:.2f}")
+    with m3: st.metric("QQQ (Nasdaq)", f"${qqq_val:.2f}")
+    with m4: st.metric("DIA (Dow)", f"${dia_val:.2f}")
+except:
+    st.warning("Market data loading...")
+
+st.write("---")
+
+# Black-Scholes Logic
 def calculate_delta(current_price, strike, days_to_expiry, iv):
     if days_to_expiry <= 0 or iv <= 0: return 0
     t = days_to_expiry / 365.0
@@ -75,7 +82,7 @@ def get_scan_data(ticker):
 
                 return {
                     'Ticker': f"https://finance.yahoo.com/quote/{ticker}",
-                    'Price': f"${cp:.2f}",   # Left-justified text
+                    'Price': f"${cp:.2f}",
                     'Strike': f"${row['strike']:.2f}",
                     'Delta': f"{delta:.2f}",
                     'Yield': f"{roc:.2f}%",
@@ -84,11 +91,13 @@ def get_scan_data(ticker):
         return None
     except: return None
 
-if st.button('🚀 Run Morning Scan'):
+# Main Execution
+if st.button('🚀 Run All-Market Scan'):
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
     results = []
     progress = st.progress(0)
-    limit = 25
+    limit = 35 # Bumping to 35 since we are covering more ground
+    
     for i, t in enumerate(tickers[:limit]):
         data = get_scan_data(t)
         if data: results.append(data)
