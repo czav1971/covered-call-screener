@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- THE RED BUTTON OVERRIDE ---
+# --- THE ROUND RED BUTTON CSS ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -37,32 +37,51 @@ st.markdown(f"""
         background-position: center;
         background-attachment: fixed;
     }}
-    [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
         text-shadow: 2px 2px 4px black !important;
     }}
     
-    /* FLAT RED BUTTON - NO SHADOWS */
+    /* THE CIRCULAR BUTTON MAGIC */
+    div.stButton {{
+        display: flex;
+        justify-content: center;
+    }}
+
     div.stButton > button {{
         color: #FF0000 !important;
         background-color: #FFFFFF !important;
         font-weight: 900 !important;
-        font-size: 24px !important;
-        width: 100% !important;
-        border: 3px solid #FF0000 !important;
-        border-radius: 0px !important;
+        font-size: 18px !important;
+        
+        /* Force a Circle */
+        width: 150px !important;
+        height: 150px !important;
+        border-radius: 50% !important;
+        border: 5px solid #FF0000 !important;
+        
+        /* Remove all shadows/glows */
         box-shadow: none !important;
         text-shadow: none !important;
-        filter: none !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }}
 
-    div.stButton > button:hover, div.stButton > button:active, div.stButton > button:focus {{
-        color: #FFFFFF !important;
-        background-color: #FF0000 !important;
-        box-shadow: none !important;
+    div.stButton > button p {{
+        margin: 0 !important;
         text-shadow: none !important;
+        color: #FF0000 !important;
+    }}
+
+    div.stButton > button:hover, div.stButton > button:active {{
+        background-color: #FF0000 !important;
+        color: #FFFFFF !important;
+    }}
+    
+    div.stButton > button:hover p {{
+        color: #FFFFFF !important;
     }}
 
     .stDataFrame {{ background: white; border-radius: 10px; padding: 5px; }}
@@ -106,7 +125,6 @@ def calculate_delta(cp, strike, days, iv):
     d1 = (np.log(cp / strike) + (0.5 * iv**2) * t) / (iv * np.sqrt(t))
     return norm.cdf(d1)
 
-# --- THE NEW BUTTON LABEL ---
 if st.button('PUSH ME'):
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
     results = []
