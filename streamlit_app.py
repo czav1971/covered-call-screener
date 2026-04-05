@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- CUSTOM THEMING (ULTRA CLEAN BUTTON) ---
+# --- CUSTOM THEMING (THE SHADOW KILLER) ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -39,26 +39,34 @@ st.markdown(f"""
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
+    /* Blue Labels for Page Text */
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
-        text-shadow: 2px 2px 4px black;
+        text-shadow: 2px 2px 4px black !important;
     }}
     
-    /* THE OVERRIDE: Targets every state of the button */
-    .stButton>button, 
-    .stButton>button:focus, 
-    .stButton>button:active, 
-    .stButton>button:hover {{
+    /* TARGETING THE BUTTON & ITS CONTAINER */
+    div.stButton > button, 
+    div.stButton > button:first-child,
+    div.stButton > button:focus,
+    div.stButton > button:active,
+    div.stButton > button:hover {{
         color: #0000FF !important;
         background-color: white !important;
         font-weight: bold !important;
-        width: 100%;
+        width: 100% !important;
         border: none !important;
+        
+        /* THE SHADOW KILLERS */
         box-shadow: none !important;
         text-shadow: none !important;
+        -webkit-box-shadow: none !important;
+        -moz-box-shadow: none !important;
+        filter: none !important;
         outline: none !important;
     }}
 
+    /* Data Table Styling */
     .stDataFrame {{ 
         background: white; 
         border-radius: 10px; 
@@ -126,10 +134,4 @@ if st.button('🚀 Run All-Market Scan'):
         except: continue
         progress.progress((i + 1) / 40)
     if results:
-        st.dataframe(
-            pd.DataFrame(results), 
-            column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, 
-            hide_index=True, 
-            use_container_width=True,
-            height=400 
-        )
+        st.dataframe(pd.DataFrame(results), column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, hide_index=True, use_container_width=True, height=400)
