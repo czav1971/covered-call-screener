@@ -6,24 +6,45 @@ from scipy.stats import norm
 
 st.set_page_config(page_title="Pro Covered Call Screener", layout="wide")
 
+# --- Custom Styling & Background Art ---
+st.markdown("""
+    <style>
+    .stApp {
+        background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), 
+                    url('https://images.unsplash.com/photo-1611974717482-480927df702c?auto=format&fit=crop&q=80&w=2000');
+        background-size: cover;
+        color: white;
+    }
+    /* This forces the dataframe text to be more readable on dark backgrounds */
+    [data-testid="stDataFrame"] {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- Sidebar Art & Navigation ---
+with st.sidebar:
+    st.markdown("## 📊 Trading Floor")
+    st.image("https://img.icons8.com/color/512/bullish.png", width=100)
+    st.info("Strategy: 0.20-0.30 Delta OTM Calls")
+    st.write("---")
+    st.write("Targeting Hamilton/Burlington Region Market Hours")
+
 # --- UI Header ---
 st.title("📈 Pro Covered Call Screener")
 
-# --- Risk Legend Section ---
-with st.expander("📝 VIEW RISK LEGEND", expanded=False):
-    st.markdown("""
-    - 🟩 **GREEN**: High Premium + Safe Delta (High Prob).
-    - 🟨 **YELLOW**: Moderate Risk (Lower Buffer).
-    - 🟥 **BOLD RED**: High Volatility / IV (Proceed with Caution).
-    """)
+with st.expander("📝 RISK LEGEND", expanded=False):
+    st.markdown("- 🟩 **GREEN**: High Yield/Safe | - 🟨 **YELLOW**: Moderate | - 🟥 **RED**: High Vol")
 
 col1, col2 = st.columns(2)
 with col1:
     vix = yf.Ticker("^VIX").fast_info['lastPrice']
-    st.metric("VIX (Vol)", f"{vix:.2f}")
+    st.metric("VIX (Volatility)", f"{vix:.2f}")
 with col2:
     spy = yf.Ticker("SPY").fast_info['lastPrice']
-    st.metric("SPY (S&P 500)", f"${spy:.2f}")
+    st.metric("SPY (Market)", f"${spy:.2f}")
 
 def calculate_delta(current_price, strike, days_to_expiry, iv):
     if days_to_expiry <= 0 or iv <= 0: return 0
@@ -37,7 +58,6 @@ def get_scan_data(ticker):
         cp = tk.fast_info['lastPrice']
         exps = tk.options
         if not exps: return None
-        
         target_expiry = exps[0]
         days = (pd.to_datetime(target_expiry) - pd.Timestamp.now()).days
         opts = tk.option_chain(target_expiry).calls
@@ -48,54 +68,43 @@ def get_scan_data(ticker):
                 roc = (row['lastPrice'] / cp) * 100
                 iv_val = row['impliedVolatility']
                 
-                if iv_val > 0.45:
-                    status = "🟥 HIGH VOL"
-                elif roc > 1.5 and delta < 0.25:
-                    status = "🟩 HIGH YIELD"
-                else:
-                    status = "🟨 MODERATE"
+                status = "🟨 MODERATE"
+                if iv_val > 0.45: status = "🟥 HIGH VOL"
+                elif roc > 1.5 and delta < 0.25: status = "🟩 HIGH YIELD"
 
                 return {
                     'Ticker': f"https://finance.yahoo.com/quote/{ticker}",
-                    'Price': cp,
-                    'Strike': row['strike'],
-                    'Delta': round(delta, 2),
-                    'Yield %': f"{roc:.2f}%",
+                    'Price': f"${cp:.2f}",   # Formatted as string to force LEFT alignment
+                    'Strike': f"${row['strike']:.2f}",
+                    'Delta': f"{delta:.2f}",
+                    'Yield': f"{roc:.2f}%",
                     'Status': status
                 }
         return None
     except: return None
 
-# --- Main App ---
-try:
+if st.button('🚀 Run Smart Scan'):
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
+    results = []
+    progress = st.progress(0)
+    limit = 25
+    for i, t in enumerate(tickers[:limit]):
+        data = get_scan_data(t)
+        if data: results.append(data)
+        progress.progress((i + 1) / limit)
     
-    if st.button('🚀 Start Morning Scan'):
-        results = []
-        progress = st.progress(0)
-        limit = 30 # Increased limit since the layout is cleaner
-        for i, t in enumerate(tickers[:limit]):
-            data = get_scan_data(t)
-            if data: results.append(data)
-            progress.progress((i + 1) / limit)
-        
-        if results:
-            df = pd.DataFrame(results)
-            st.dataframe(
-                df,
-                column_config={
-                    "Ticker": st.column_config.LinkColumn(
-                        "Ticker", 
-                        display_text=r"https://finance.yahoo.com/quote/(.*)"
-                    ),
-                    "Price": st.column_config.NumberColumn(format="$%.2f"),
-                    "Strike": st.column_config.NumberColumn(format="$%.2f"),
-                    "Yield %": st.column_config.TextColumn("Yield"),
-                },
-                hide_index=True,
-                use_container_width=True
-            )
-        else:
-            st.info("No candidates in range.")
-except Exception as e:
-    st.error(f"Error: {e}")
+    if results:
+        df = pd.DataFrame(results)
+        st.dataframe(
+            df,
+            column_config={
+                "Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)"),
+                # We use TextColumn here to keep everything justified to the left
+                "Price": st.column_config.TextColumn("Price"),
+                "Strike": st.column_config.TextColumn("Strike"),
+                "Yield": st.column_config.TextColumn("Yield"),
+                "Delta": st.column_config.TextColumn("Delta"),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
