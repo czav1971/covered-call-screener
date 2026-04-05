@@ -1,6 +1,5 @@
 yfinance
 pandas
-streamlit
-lxml
 numpy
 scipy
+streamlit
