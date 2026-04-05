@@ -7,7 +7,6 @@ import hmac
 
 st.set_page_config(page_title="Chris's Covered Call Screener", layout="wide")
 
-# --- PASSWORD LOGIC ---
 def check_password():
     def password_entered():
         if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
@@ -15,24 +14,39 @@ def check_password():
             del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
-
     if st.session_state.get("password_correct", False):
         return True
-
     st.title("🔐 Secure Access Required")
     st.text_input("Enter Password", type="password", on_change=password_entered, key="password")
-    if "password_correct" in st.session_state:
-        st.error("😕 Password incorrect")
     return False
 
 if not check_password():
     st.stop()
 
-# --- DASHBOARD ---
+# --- CUSTOM BACKGROUND ---
+bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
+
+st.markdown(f"""
+    <style>
+    .stApp {{
+        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                    url('{bg_img}');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }}
+    [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
+    h1, h2, h3, p, [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{ 
+        color: white !important; 
+    }}
+    .stDataFrame {{ background: white; border-radius: 10px; padding: 10px; }}
+    </style>
+    """, unsafe_allow_html=True)
+
 st.title("🎯 Chris's Command Center")
 
 with st.sidebar:
-    st.markdown("## 📊 Navigation")
+    st.markdown("## 📊 Options Screener")
     if st.button("Log Out"):
         st.session_state["password_correct"] = False
         st.rerun()
@@ -48,7 +62,7 @@ try:
     with m3: st.metric("QQQ", f"${qqq:.2f}")
     with m4: st.metric("DIA", f"${dia:.2f}")
 except:
-    st.info("Fetching market data...")
+    st.info("Syncing market data...")
 
 def calculate_delta(cp, strike, days, iv):
     if days <= 0 or iv <= 0: return 0
@@ -77,6 +91,5 @@ if st.button('🚀 Run All-Market Scan'):
                     break
         except: continue
         progress.progress((i + 1) / 40)
-    
     if results:
-        st.dataframe(pd.DataFrame(results), column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, hide_index=True, use_container_width=True, height=600)
+        st.dataframe(pd.DataFrame(results), column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, hide_index=True, use_container_width=True)
