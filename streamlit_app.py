@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- CUSTOM THEMING (THE SHADOW KILLER) ---
+# --- THE OMEGA CSS OVERRIDE ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -39,39 +39,38 @@ st.markdown(f"""
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
-    /* Blue Labels for Page Text */
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
         text-shadow: 2px 2px 4px black !important;
     }}
     
-    /* TARGETING THE BUTTON & ITS CONTAINER */
-    div.stButton > button, 
-    div.stButton > button:first-child,
-    div.stButton > button:focus,
-    div.stButton > button:active,
-    div.stButton > button:hover {{
+    /* THE "SHADOW KILLER" - TARGETS THE BUTTON CORE */
+    div.stButton > button {{
         color: #0000FF !important;
-        background-color: white !important;
-        font-weight: bold !important;
+        background-color: #FFFFFF !important;
+        font-weight: 900 !important; /* Extra bold for clarity */
         width: 100% !important;
-        border: none !important;
+        border: 2px solid #0000FF !important; /* Solid border to define edges */
+        border-radius: 0px !important; /* Squares it off to prevent "fuzz" */
         
-        /* THE SHADOW KILLERS */
+        /* NUCLEAR SHADOW REMOVAL */
         box-shadow: none !important;
         text-shadow: none !important;
-        -webkit-box-shadow: none !important;
-        -moz-box-shadow: none !important;
+        transition: none !important;
         filter: none !important;
-        outline: none !important;
+        transform: none !important;
     }}
 
-    /* Data Table Styling */
-    .stDataFrame {{ 
-        background: white; 
-        border-radius: 10px; 
-        padding: 5px; 
+    /* Keeps it flat even when hovering or clicking */
+    div.stButton > button:hover, div.stButton > button:active, div.stButton > button:focus {{
+        color: #FFFFFF !important;
+        background-color: #0000FF !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        border: 2px solid #FFFFFF !important;
     }}
+
+    .stDataFrame {{ background: white; border-radius: 10px; padding: 5px; }}
     </style>
     """, unsafe_allow_html=True)
 
