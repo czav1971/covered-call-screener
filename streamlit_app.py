@@ -9,21 +9,21 @@ st.set_page_config(page_title="Pro Covered Call Screener", layout="wide")
 # --- UI Header ---
 st.title("📈 Pro Covered Call Screener")
 
-# --- New Risk Legend Section ---
-with st.expander("📝 VIEW RISK LEGEND (Tap to Expand)", expanded=True):
+# --- Risk Legend Section ---
+with st.expander("📝 VIEW RISK LEGEND", expanded=False):
     st.markdown("""
-    - 🟩 **GREEN**: High Premium with a Safe Delta (High Probability of Profit).
-    - 🟨 **YELLOW**: Moderate Risk (Strike is closer to price / higher chance of assignment).
-    - 🟥 **BOLD RED**: High Volatility / Binary Event (High IV - Proceed with Caution).
+    - 🟩 **GREEN**: High Premium + Safe Delta (High Prob).
+    - 🟨 **YELLOW**: Moderate Risk (Lower Buffer).
+    - 🟥 **BOLD RED**: High Volatility / IV (Proceed with Caution).
     """)
 
 col1, col2 = st.columns(2)
 with col1:
     vix = yf.Ticker("^VIX").fast_info['lastPrice']
-    st.metric("Market Volatility (VIX)", f"{vix:.2f}")
+    st.metric("VIX (Vol)", f"{vix:.2f}")
 with col2:
     spy = yf.Ticker("SPY").fast_info['lastPrice']
-    st.metric("S&P 500 (SPY)", f"${spy:.2f}")
+    st.metric("SPY (S&P 500)", f"${spy:.2f}")
 
 def calculate_delta(current_price, strike, days_to_expiry, iv):
     if days_to_expiry <= 0 or iv <= 0: return 0
@@ -48,23 +48,20 @@ def get_scan_data(ticker):
                 roc = (row['lastPrice'] / cp) * 100
                 iv_val = row['impliedVolatility']
                 
-                # Logic for the color-coded "Status"
                 if iv_val > 0.45:
                     status = "🟥 HIGH VOL"
                 elif roc > 1.5 and delta < 0.25:
-                    status = "🟩 HIGH YIELD/SAFE"
+                    status = "🟩 HIGH YIELD"
                 else:
                     status = "🟨 MODERATE"
 
                 return {
                     'Ticker': f"https://finance.yahoo.com/quote/{ticker}",
-                    'Symbol': ticker,
                     'Price': cp,
                     'Strike': row['strike'],
                     'Delta': round(delta, 2),
                     'Yield %': f"{roc:.2f}%",
-                    'IV %': f"{iv_val*100:.0f}%",
-                    'Risk Status': status
+                    'Status': status
                 }
         return None
     except: return None
@@ -76,7 +73,7 @@ try:
     if st.button('🚀 Start Morning Scan'):
         results = []
         progress = st.progress(0)
-        limit = 20 
+        limit = 30 # Increased limit since the layout is cleaner
         for i, t in enumerate(tickers[:limit]):
             data = get_scan_data(t)
             if data: results.append(data)
@@ -87,15 +84,18 @@ try:
             st.dataframe(
                 df,
                 column_config={
-                    "Ticker": st.column_config.LinkColumn("Chart", display_text=r"https://finance.yahoo.com/quote/(.*)"),
+                    "Ticker": st.column_config.LinkColumn(
+                        "Ticker", 
+                        display_text=r"https://finance.yahoo.com/quote/(.*)"
+                    ),
                     "Price": st.column_config.NumberColumn(format="$%.2f"),
                     "Strike": st.column_config.NumberColumn(format="$%.2f"),
-                    "Risk Status": st.column_config.TextColumn("Risk Status"),
+                    "Yield %": st.column_config.TextColumn("Yield"),
                 },
                 hide_index=True,
                 use_container_width=True
             )
         else:
-            st.info("No candidates found in the 0.20-0.30 Delta range.")
+            st.info("No candidates in range.")
 except Exception as e:
     st.error(f"Error: {e}")
