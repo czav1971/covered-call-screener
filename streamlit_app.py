@@ -23,27 +23,27 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- CUSTOM BACKGROUND & MOBILE OPTIMIZATION ---
+# --- CUSTOM BACKGROUND (NO STRETCH) ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
     <style>
     .stApp {{
-        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
-                    url('{bg_img}');
-        background-size: 100% 100%; /* Fixes PC Scaling */
+        background-color: #0e1117; /* Matches the dark theme for empty space */
+        background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                          url('{bg_img}');
+        background-size: contain; /* Shows full image without stretching */
         background-repeat: no-repeat;
+        background-position: center;
         background-attachment: fixed;
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
-    /* Blue Labels and Metrics */
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
-        text-shadow: 1px 1px 2px black;
+        text-shadow: 2px 2px 4px black;
     }}
     
-    /* Fix Button Text Visibility */
     .stButton>button {{
         color: #0000FF !important;
         background-color: white !important;
@@ -51,12 +51,10 @@ st.markdown(f"""
         width: 100%;
     }}
 
-    /* Mobile-Friendly Table Container */
     .stDataFrame {{ 
         background: white; 
         border-radius: 10px; 
         padding: 5px; 
-        overflow: auto !important;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -120,7 +118,6 @@ if st.button('🚀 Run All-Market Scan'):
         except: continue
         progress.progress((i + 1) / 40)
     if results:
-        # height=400 keeps the table from taking up the whole phone screen
         st.dataframe(
             pd.DataFrame(results), 
             column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, 
