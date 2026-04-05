@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- CUSTOM BACKGROUND ---
+# --- CUSTOM BACKGROUND & THEMING ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -37,14 +37,14 @@ st.markdown(f"""
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
-    /* General text to white */
-    h1, h2, h3, p, [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{ 
-        color: white !important; 
+    /* Change all primary text to Blue */
+    h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
+        color: #00BFFF !important; 
     }}
     
-    /* FORCE BUTTON TEXT TO BLACK */
+    /* Button text to Blue */
     .stButton>button {{
-        color: black !important;
+        color: #0000FF !important;
         background-color: white !important;
         font-weight: bold;
     }}
@@ -61,18 +61,29 @@ with st.sidebar:
         st.session_state["password_correct"] = False
         st.rerun()
 
+# --- METRICS WITH COLOR LOGIC ---
 m1, m2, m3, m4 = st.columns(4)
+
+def get_metric_data(symbol):
+    ticker = yf.Ticker(symbol)
+    info = ticker.fast_info
+    current = info['lastPrice']
+    prev_close = ticker.info.get('previousClose', current)
+    change = current - prev_close
+    return current, change
+
 try:
-    vix = yf.Ticker("^VIX").fast_info['lastPrice']
-    spy = yf.Ticker("SPY").fast_info['lastPrice']
-    qqq = yf.Ticker("QQQ").fast_info['lastPrice']
-    dia = yf.Ticker("DIA").fast_info['lastPrice']
-    with m1: st.metric("VIX", f"{vix:.2f}")
-    with m2: st.metric("SPY", f"${spy:.2f}")
-    with m3: st.metric("QQQ", f"${qqq:.2f}")
-    with m4: st.metric("DIA", f"${dia:.2f}")
+    vix_p, _ = get_metric_data("^VIX")
+    spy_p, spy_c = get_metric_data("SPY")
+    qqq_p, qqq_c = get_metric_data("QQQ")
+    dia_p, dia_c = get_metric_data("DIA")
+
+    with m1: st.metric("VIX", f"{vix_p:.2f}") # VIX stays standard
+    with m2: st.metric("SPY", f"${spy_p:.2f}", f"{spy_c:.2f}")
+    with m3: st.metric("QQQ", f"${qqq_p:.2f}", f"{qqq_c:.2f}")
+    with m4: st.metric("DIA", f"${dia_p:.2f}", f"{dia_c:.2f}")
 except:
-    st.info("Syncing market data...")
+    st.info("Syncing live market data...")
 
 def calculate_delta(cp, strike, days, iv):
     if days <= 0 or iv <= 0: return 0
