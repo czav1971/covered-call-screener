@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- CUSTOM THEMING (CLEAN BUTTON FIX) ---
+# --- CUSTOM THEMING (ULTRA CLEAN BUTTON) ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -39,21 +39,24 @@ st.markdown(f"""
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
-    /* Blue Labels with slight shadow for readability on busy background */
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
         text-shadow: 2px 2px 4px black;
     }}
     
-    /* CLEAN BLUE BUTTON - NO SHADOW */
-    .stButton>button {{
+    /* THE OVERRIDE: Targets every state of the button */
+    .stButton>button, 
+    .stButton>button:focus, 
+    .stButton>button:active, 
+    .stButton>button:hover {{
         color: #0000FF !important;
         background-color: white !important;
-        font-weight: bold;
+        font-weight: bold !important;
         width: 100%;
         border: none !important;
-        box-shadow: none !important; /* Removes outer shadow */
-        text-shadow: none !important; /* Removes lettering shadow */
+        box-shadow: none !important;
+        text-shadow: none !important;
+        outline: none !important;
     }}
 
     .stDataFrame {{ 
