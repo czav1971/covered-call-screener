@@ -1,49 +1,60 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+from datetime import datetime
 
 st.set_page_config(page_title="Covered Call Screener", layout="wide")
 st.title("🎯 S&P 500 Covered Call Screener")
 
-def get_best_call(ticker):
+def get_scan_data(ticker):
     try:
         tk = yf.Ticker(ticker)
         current_price = tk.fast_info['lastPrice']
+        
+        # Get all expiration dates
         exps = tk.options
         if not exps: return None
         
-        # Get the first expiration
-        opt = tk.option_chain(exps[0]).calls
-        # Only look at strikes above current price (OTM)
-        otm_calls = opt[opt['strike'] > current_price]
+        # We'll pick the first available expiry for this scan
+        target_expiry = exps[0] 
+        
+        # Get the call options for that date
+        opts = tk.option_chain(target_expiry).calls
+        
+        # Filter for the first Strike that is HIGHER than current price (OTM)
+        otm_calls = opts[opts['strike'] > current_price]
         
         if not otm_calls.empty:
-            best = otm_calls.iloc[0] # Closest to the money
+            suggested_call = otm_calls.iloc[0] # The "Next Strike Up"
             return {
                 'Ticker': ticker,
-                'Price': round(current_price, 2),
-                'Strike': best['strike'],
-                'Premium': best['lastPrice'],
-                'IV': round(best['impliedVolatility'] * 100, 1)
+                'Current Price': f"${current_price:.2f}",
+                'Suggested Strike': f"${suggested_call['strike']:.2f}",
+                'Expiry Date': target_expiry,
+                'Premium (Bid)': f"${suggested_call['bid']:.2f}"
             }
     except:
         return None
 
 try:
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
-    st.write(f"Screener ready for {len(tickers)} tickers.")
+    st.write(f"Ready to scan {len(tickers)} tickers.")
     
-    if st.button('🚀 Run Scan (Top 10 Tickers)'):
+    if st.button('🚀 Run Market Scan'):
         results = []
         progress_bar = st.progress(0)
-        for i, t in enumerate(tickers[:10]):
-            data = get_best_call(t)
+        
+        # Scanning the first 20 for a quick Sunday test
+        test_limit = 20 
+        for i, t in enumerate(tickers[:test_limit]):
+            data = get_scan_data(t)
             if data: results.append(data)
-            progress_bar.progress((i + 1) / 10)
+            progress_bar.progress((i + 1) / test_limit)
         
         if results:
-            st.table(pd.DataFrame(results))
+            df = pd.DataFrame(results)
+            st.table(df)
         else:
-            st.warning("No data found. Market might be closed or tickers limited.")
+            st.warning("No data found. Check back when markets are open!")
 except Exception as e:
     st.error(f"Error: {e}")
