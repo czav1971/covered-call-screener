@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- CUSTOM BACKGROUND & THEMING ---
+# --- CUSTOM BACKGROUND & MOBILE OPTIMIZATION ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -31,25 +31,33 @@ st.markdown(f"""
     .stApp {{
         background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
                     url('{bg_img}');
-        background-size: cover;
-        background-position: center;
+        background-size: 100% 100%; /* Fixes PC Scaling */
+        background-repeat: no-repeat;
         background-attachment: fixed;
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
     
-    /* Change all primary text to Blue */
+    /* Blue Labels and Metrics */
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
+        text-shadow: 1px 1px 2px black;
     }}
     
-    /* Button text to Blue */
+    /* Fix Button Text Visibility */
     .stButton>button {{
         color: #0000FF !important;
         background-color: white !important;
         font-weight: bold;
+        width: 100%;
     }}
 
-    .stDataFrame {{ background: white; border-radius: 10px; padding: 10px; }}
+    /* Mobile-Friendly Table Container */
+    .stDataFrame {{ 
+        background: white; 
+        border-radius: 10px; 
+        padding: 5px; 
+        overflow: auto !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,7 +69,6 @@ with st.sidebar:
         st.session_state["password_correct"] = False
         st.rerun()
 
-# --- METRICS WITH COLOR LOGIC ---
 m1, m2, m3, m4 = st.columns(4)
 
 def get_metric_data(symbol):
@@ -78,7 +85,7 @@ try:
     qqq_p, qqq_c = get_metric_data("QQQ")
     dia_p, dia_c = get_metric_data("DIA")
 
-    with m1: st.metric("VIX", f"{vix_p:.2f}") # VIX stays standard
+    with m1: st.metric("VIX", f"{vix_p:.2f}")
     with m2: st.metric("SPY", f"${spy_p:.2f}", f"{spy_c:.2f}")
     with m3: st.metric("QQQ", f"${qqq_p:.2f}", f"{qqq_c:.2f}")
     with m4: st.metric("DIA", f"${dia_p:.2f}", f"{dia_c:.2f}")
@@ -113,4 +120,11 @@ if st.button('🚀 Run All-Market Scan'):
         except: continue
         progress.progress((i + 1) / 40)
     if results:
-        st.dataframe(pd.DataFrame(results), column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, hide_index=True, use_container_width=True)
+        # height=400 keeps the table from taking up the whole phone screen
+        st.dataframe(
+            pd.DataFrame(results), 
+            column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, 
+            hide_index=True, 
+            use_container_width=True,
+            height=400 
+        )
