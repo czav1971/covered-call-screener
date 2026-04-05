@@ -36,9 +36,19 @@ st.markdown(f"""
         background-attachment: fixed;
     }}
     [data-testid="stHeader"] {{ background: rgba(0,0,0,0); }}
+    
+    /* General text to white */
     h1, h2, h3, p, [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{ 
         color: white !important; 
     }}
+    
+    /* FORCE BUTTON TEXT TO BLACK */
+    .stButton>button {{
+        color: black !important;
+        background-color: white !important;
+        font-weight: bold;
+    }}
+
     .stDataFrame {{ background: white; border-radius: 10px; padding: 10px; }}
     </style>
     """, unsafe_allow_html=True)
