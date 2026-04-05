@@ -6,45 +6,46 @@ from scipy.stats import norm
 
 st.set_page_config(page_title="Pro Covered Call Screener", layout="wide")
 
-# --- Custom Styling & Background Art ---
+# --- Custom Styling: 0.6 Opacity for a "Tinted" look instead of solid black ---
 st.markdown("""
     <style>
     .stApp {
-        background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), 
+        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
                     url('https://images.unsplash.com/photo-1611974717482-480927df702c?auto=format&fit=crop&q=80&w=2000');
         background-size: cover;
+        background-attachment: fixed;
         color: white;
     }
-    /* This forces the dataframe text to be more readable on dark backgrounds */
+    /* Makes the data table look like it's floating on glass */
     [data-testid="stDataFrame"] {
-        background-color: rgba(255, 255, 255, 0.05);
+        background-color: rgba(255, 255, 255, 0.1) !important;
         border-radius: 10px;
-        padding: 10px;
+        padding: 5px;
+    }
+    /* Fixes header visibility on tinted backgrounds */
+    [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- Sidebar Art & Navigation ---
+# --- Sidebar ---
 with st.sidebar:
-    st.markdown("## 📊 Trading Floor")
-    st.image("https://img.icons8.com/color/512/bullish.png", width=100)
-    st.info("Strategy: 0.20-0.30 Delta OTM Calls")
+    st.markdown("## 📈 Hamilton Trading")
+    st.image("https://img.icons8.com/color/512/bullish.png", width=80)
     st.write("---")
-    st.write("Targeting Hamilton/Burlington Region Market Hours")
+    st.caption("Strategy: 0.20-0.30 Delta")
 
-# --- UI Header ---
-st.title("📈 Pro Covered Call Screener")
-
-with st.expander("📝 RISK LEGEND", expanded=False):
-    st.markdown("- 🟩 **GREEN**: High Yield/Safe | - 🟨 **YELLOW**: Moderate | - 🟥 **RED**: High Vol")
+# --- Main UI ---
+st.title("🎯 Pro Covered Call Screener")
 
 col1, col2 = st.columns(2)
 with col1:
     vix = yf.Ticker("^VIX").fast_info['lastPrice']
-    st.metric("VIX (Volatility)", f"{vix:.2f}")
+    st.metric("VIX (Market Vol)", f"{vix:.2f}")
 with col2:
     spy = yf.Ticker("SPY").fast_info['lastPrice']
-    st.metric("SPY (Market)", f"${spy:.2f}")
+    st.metric("SPY Price", f"${spy:.2f}")
 
 def calculate_delta(current_price, strike, days_to_expiry, iv):
     if days_to_expiry <= 0 or iv <= 0: return 0
@@ -74,7 +75,7 @@ def get_scan_data(ticker):
 
                 return {
                     'Ticker': f"https://finance.yahoo.com/quote/{ticker}",
-                    'Price': f"${cp:.2f}",   # Formatted as string to force LEFT alignment
+                    'Price': f"${cp:.2f}",   # Left-justified text
                     'Strike': f"${row['strike']:.2f}",
                     'Delta': f"{delta:.2f}",
                     'Yield': f"{roc:.2f}%",
@@ -83,7 +84,7 @@ def get_scan_data(ticker):
         return None
     except: return None
 
-if st.button('🚀 Run Smart Scan'):
+if st.button('🚀 Run Morning Scan'):
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
     results = []
     progress = st.progress(0)
@@ -99,7 +100,6 @@ if st.button('🚀 Run Smart Scan'):
             df,
             column_config={
                 "Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)"),
-                # We use TextColumn here to keep everything justified to the left
                 "Price": st.column_config.TextColumn("Price"),
                 "Strike": st.column_config.TextColumn("Strike"),
                 "Yield": st.column_config.TextColumn("Yield"),
