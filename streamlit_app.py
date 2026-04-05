@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- THE OMEGA CSS OVERRIDE ---
+# --- THE RED BUTTON OVERRIDE ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -44,30 +44,25 @@ st.markdown(f"""
         text-shadow: 2px 2px 4px black !important;
     }}
     
-    /* THE "SHADOW KILLER" - TARGETS THE BUTTON CORE */
+    /* FLAT RED BUTTON - NO SHADOWS */
     div.stButton > button {{
-        color: #0000FF !important;
+        color: #FF0000 !important;
         background-color: #FFFFFF !important;
-        font-weight: 900 !important; /* Extra bold for clarity */
+        font-weight: 900 !important;
+        font-size: 24px !important;
         width: 100% !important;
-        border: 2px solid #0000FF !important; /* Solid border to define edges */
-        border-radius: 0px !important; /* Squares it off to prevent "fuzz" */
-        
-        /* NUCLEAR SHADOW REMOVAL */
+        border: 3px solid #FF0000 !important;
+        border-radius: 0px !important;
         box-shadow: none !important;
         text-shadow: none !important;
-        transition: none !important;
         filter: none !important;
-        transform: none !important;
     }}
 
-    /* Keeps it flat even when hovering or clicking */
     div.stButton > button:hover, div.stButton > button:active, div.stButton > button:focus {{
         color: #FFFFFF !important;
-        background-color: #0000FF !important;
+        background-color: #FF0000 !important;
         box-shadow: none !important;
         text-shadow: none !important;
-        border: 2px solid #FFFFFF !important;
     }}
 
     .stDataFrame {{ background: white; border-radius: 10px; padding: 5px; }}
@@ -111,7 +106,8 @@ def calculate_delta(cp, strike, days, iv):
     d1 = (np.log(cp / strike) + (0.5 * iv**2) * t) / (iv * np.sqrt(t))
     return norm.cdf(d1)
 
-if st.button('🚀 Run All-Market Scan'):
+# --- THE NEW BUTTON LABEL ---
+if st.button('PUSH ME'):
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
     results = []
     progress = st.progress(0)
