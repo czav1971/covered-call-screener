@@ -14,15 +14,12 @@ def calculate_delta(current_price, strike, days_to_expiry, iv):
     return norm.cdf(d1)
 
 def get_logic_note(delta, iv, price, strike):
-    # This writes the "Reasoning" for you
     buffer = ((strike - price) / price) * 100
     if iv > 0.40:
-        note = f"🔥 High IV ({iv*100:.0f}%). Higher risk/reward."
+        return f"🔥 High Vol ({iv*100:.0f}%). High Premium."
     elif delta > 0.27:
-        note = f"💰 Aggressive Delta ({delta:.2f}). Focus on premium."
-    else:
-        note = f"🛡️ Conservative ({delta:.2f} Delta). {buffer:.1f}% price buffer."
-    return note
+        return f"💰 Aggressive Delta. More Income."
+    return f"🛡️ Conservative. {buffer:.1f}% Buffer."
 
 def get_scan_data(ticker):
     try:
@@ -38,13 +35,16 @@ def get_scan_data(ticker):
         for _, row in opts.iterrows():
             delta = calculate_delta(current_price, row['strike'], days_to_expiry, row['impliedVolatility'])
             if 0.20 <= delta <= 0.30:
+                # Create the Yahoo Finance Link
+                yahoo_url = f"https://finance.yahoo.com/quote/{ticker}"
                 return {
-                    'Ticker': ticker,
+                    'Ticker': yahoo_url, # We store the URL here
+                    'Symbol': ticker,    # We'll use this for display text
                     'Price': f"${current_price:.2f}",
                     'Strike': f"${row['strike']:.2f}",
                     'Delta': f"{delta:.2f}",
                     'Premium': f"${row['lastPrice']:.2f}",
-                    'Logic / Reasoning': get_logic_note(delta, row['impliedVolatility'], current_price, row['strike'])
+                    'Logic': get_logic_note(delta, row['impliedVolatility'], current_price, row['strike'])
                 }
         return None
     except:
@@ -55,14 +55,27 @@ try:
     if st.button('🚀 Run Smart Scan'):
         results = []
         progress_bar = st.progress(0)
-        for i, t in enumerate(tickers[:15]):
+        test_limit = 15
+        for i, t in enumerate(tickers[:test_limit]):
             data = get_scan_data(t)
             if data: results.append(data)
-            progress_bar.progress((i + 1) / 15)
+            progress_bar.progress((i + 1) / test_limit)
         
         if results:
-            st.dataframe(pd.DataFrame(results), use_container_width=True)
+            df = pd.DataFrame(results)
+            # This is the magic part: configures the 'Ticker' column to be a clickable link
+            st.dataframe(
+                df,
+                column_config={
+                    "Ticker": st.column_config.LinkColumn(
+                        "Ticker Link",
+                        display_text=r"https://finance.yahoo.com/quote/(.*)"
+                    )
+                },
+                hide_index=True,
+                use_container_width=True
+            )
         else:
-            st.warning("No matches in the 0.20-0.30 Delta range.")
+            st.warning("No matches found.")
 except Exception as e:
     st.error(f"Error: {e}")
