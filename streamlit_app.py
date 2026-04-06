@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- THE ROUND RED BUTTON CSS ---
+# --- THEMES & STYLING ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -37,54 +37,37 @@ st.markdown(f"""
         background-position: center;
         background-attachment: fixed;
     }}
-    
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
         text-shadow: 2px 2px 4px black !important;
     }}
-    
-    /* THE CIRCULAR BUTTON MAGIC */
-    div.stButton {{
-        display: flex;
-        justify-content: center;
-    }}
-
-    div.stButton > button {{
+    div.stButton > button, div.stButton > button p {{
         color: #FF0000 !important;
         background-color: #FFFFFF !important;
         font-weight: 900 !important;
         font-size: 18px !important;
-        
-        /* Force a Circle */
-        width: 150px !important;
-        height: 150px !important;
+        width: 140px !important;
+        height: 140px !important;
         border-radius: 50% !important;
         border: 5px solid #FF0000 !important;
-        
-        /* Remove all shadows/glows */
+        text-shadow: none !important;
         box-shadow: none !important;
-        text-shadow: none !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
     }}
-
-    div.stButton > button p {{
-        margin: 0 !important;
-        text-shadow: none !important;
-        color: #FF0000 !important;
-    }}
-
-    div.stButton > button:hover, div.stButton > button:active {{
+    div.stButton > button:hover {{
         background-color: #FF0000 !important;
         color: #FFFFFF !important;
     }}
-    
-    div.stButton > button:hover p {{
-        color: #FFFFFF !important;
-    }}
-
+    div.stButton > button:hover p {{ color: #FFFFFF !important; }}
     .stDataFrame {{ background: white; border-radius: 10px; padding: 5px; }}
+    
+    /* Style for the Manual Search Section at bottom */
+    .manual-box {{
+        background: rgba(0, 0, 0, 0.7);
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #00BFFF;
+        margin-top: 30px;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -92,7 +75,7 @@ st.title("🎯 Chris's Command Center")
 
 with st.sidebar:
     st.markdown("## 📊 Options Screener")
-    if st.button("Log Out"):
+    if st.button("Log Out", key="logout"):
         st.session_state["password_correct"] = False
         st.rerun()
 
@@ -111,7 +94,6 @@ try:
     spy_p, spy_c = get_metric_data("SPY")
     qqq_p, qqq_c = get_metric_data("QQQ")
     dia_p, dia_c = get_metric_data("DIA")
-
     with m1: st.metric("VIX", f"{vix_p:.2f}")
     with m2: st.metric("SPY", f"${spy_p:.2f}", f"{spy_c:.2f}")
     with m3: st.metric("QQQ", f"${qqq_p:.2f}", f"{qqq_c:.2f}")
@@ -125,11 +107,14 @@ def calculate_delta(cp, strike, days, iv):
     d1 = (np.log(cp / strike) + (0.5 * iv**2) * t) / (iv * np.sqrt(t))
     return norm.cdf(d1)
 
-if st.button('PUSH ME'):
-    tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
+def scan_logic(ticker_list):
     results = []
-    progress = st.progress(0)
-    for i, t in enumerate(tickers[:40]):
+    total = len(ticker_list)
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    for i, t in enumerate(ticker_list):
+        status_text.text(f"Scanning {i+1} of {total}: {t}")
         try:
             tk = yf.Ticker(t)
             cp = tk.fast_info['lastPrice']
@@ -145,6 +130,31 @@ if st.button('PUSH ME'):
                     results.append({'Ticker': f"https://finance.yahoo.com/quote/{t}", 'Price': f"${cp:.2f}", 'Strike': f"${row['strike']:.2f}", 'Delta': f"{delta:.2f}", 'Yield': f"{yield_val:.2f}%", 'Status': status})
                     break
         except: continue
-        progress.progress((i + 1) / 40)
-    if results:
-        st.dataframe(pd.DataFrame(results), column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, hide_index=True, use_container_width=True, height=400)
+        progress_bar.progress((i + 1) / total)
+    
+    status_text.text(f"Scan Complete.")
+    return results
+
+# --- MAIN WATCHLIST SCAN ---
+st.write("### Watchlist Scan")
+if st.button('PUSH ME'):
+    tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
+    res = scan_logic(tickers)
+    if res: st.session_state['scan_results'] = res
+
+if 'scan_results' in st.session_state:
+    st.dataframe(pd.DataFrame(st.session_state['scan_results']), 
+                 column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, 
+                 hide_index=True, use_container_width=True)
+
+# --- MANUAL SEARCH AT BOTTOM ---
+st.markdown('<div class="manual-box">', unsafe_allow_html=True)
+st.write("### 🔍 Manual Ticker Analysis")
+manual_ticker = st.text_input("Enter a custom symbol to apply covered call filters:", "").upper()
+
+if manual_ticker:
+    if st.button(f"Analyze {manual_ticker}", key="manual_btn"):
+        res = scan_logic([manual_ticker])
+        if res: st.session_state['scan_results'] = res
+        st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
