@@ -23,7 +23,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- THEMES & STYLING ---
+# --- THEMES & TARGETED STYLING ---
 bg_img = "https://raw.githubusercontent.com/czav1971/covered-call-screener/main/stock%20market%20gurus.png"
 
 st.markdown(f"""
@@ -37,37 +37,51 @@ st.markdown(f"""
         background-position: center;
         background-attachment: fixed;
     }}
+    
     h1, h2, h3, p, [data-testid="stMetricLabel"] {{ 
         color: #00BFFF !important; 
         text-shadow: 2px 2px 4px black !important;
     }}
-    div.stButton > button, div.stButton > button p {{
+
+    /* ONLY TARGET THE 'PUSH ME' BUTTON USING ITS KEY */
+    div.st-key-main_push_button > button {{
         color: #FF0000 !important;
         background-color: #FFFFFF !important;
         font-weight: 900 !important;
         font-size: 18px !important;
-        width: 140px !important;
-        height: 140px !important;
+        width: 150px !important;
+        height: 150px !important;
         border-radius: 50% !important;
         border: 5px solid #FF0000 !important;
-        text-shadow: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         box-shadow: none !important;
+        text-shadow: none !important;
     }}
-    div.stButton > button:hover {{
+    
+    div.st-key-main_push_button > button p {{
+        margin: 0 !important;
+        color: #FF0000 !important;
+        text-shadow: none !important;
+    }}
+
+    div.st-key-main_push_button > button:hover {{
         background-color: #FF0000 !important;
         color: #FFFFFF !important;
     }}
-    div.stButton > button:hover p {{ color: #FFFFFF !important; }}
-    .stDataFrame {{ background: white; border-radius: 10px; padding: 5px; }}
     
-    /* Style for the Manual Search Section at bottom */
-    .manual-box {{
-        background: rgba(0, 0, 0, 0.7);
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #00BFFF;
-        margin-top: 30px;
+    div.st-key-main_push_button > button:hover p {{ color: #FFFFFF !important; }}
+
+    /* LEAVE SIDEBAR BUTTONS NORMAL */
+    section[data-testid="stSidebar"] div.stButton > button {{
+        width: auto !important;
+        height: auto !important;
+        border-radius: 4px !important;
+        padding: 0.25rem 0.75rem !important;
     }}
+
+    .stDataFrame {{ background: white; border-radius: 10px; padding: 5px; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -75,7 +89,8 @@ st.title("🎯 Chris's Command Center")
 
 with st.sidebar:
     st.markdown("## 📊 Options Screener")
-    if st.button("Log Out", key="logout"):
+    # Added a unique key "logout_btn" to keep it separate
+    if st.button("Log Out", key="logout_btn"):
         st.session_state["password_correct"] = False
         st.rerun()
 
@@ -135,9 +150,9 @@ def scan_logic(ticker_list):
     status_text.text(f"Scan Complete.")
     return results
 
-# --- MAIN WATCHLIST SCAN ---
 st.write("### Watchlist Scan")
-if st.button('PUSH ME'):
+# Added the unique key 'main_push_button' for the CSS to find
+if st.button('PUSH ME', key="main_push_button"):
     tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
     res = scan_logic(tickers)
     if res: st.session_state['scan_results'] = res
@@ -147,13 +162,11 @@ if 'scan_results' in st.session_state:
                  column_config={"Ticker": st.column_config.LinkColumn("Ticker", display_text=r"https://finance.yahoo.com/quote/(.*)")}, 
                  hide_index=True, use_container_width=True)
 
-# --- MANUAL SEARCH AT BOTTOM ---
-st.markdown('<div class="manual-box">', unsafe_allow_html=True)
+st.markdown('<div style="background: rgba(0,0,0,0.7); padding: 20px; border-radius: 15px; border: 1px solid #00BFFF; margin-top: 30px;">', unsafe_allow_html=True)
 st.write("### 🔍 Manual Ticker Analysis")
-manual_ticker = st.text_input("Enter a custom symbol to apply covered call filters:", "").upper()
-
+manual_ticker = st.text_input("Enter symbol:", "").upper()
 if manual_ticker:
-    if st.button(f"Analyze {manual_ticker}", key="manual_btn"):
+    if st.button(f"Analyze {manual_ticker}", key="manual_check_btn"):
         res = scan_logic([manual_ticker])
         if res: st.session_state['scan_results'] = res
         st.rerun()
