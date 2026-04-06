@@ -4,8 +4,9 @@ import yfinance as yf
 import numpy as np
 from scipy.stats import norm
 import hmac
+import time
 
-st.set_page_config(page_title="Chris's Covered Call Command Center", layout="wide")
+st.set_page_config(page_title="Chris's S&P 500 Execution Engine", layout="wide")
 
 # --- AUTH ---
 def check_password():
@@ -33,35 +34,32 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- MATH ENGINE ---
+# --- ENGINE LOGIC ---
 def calculate_delta(cp, strike, days, iv):
     if days <= 0 or iv <= 0: return 0
     t = days / 365.0
     d1 = (np.log(cp / strike) + (0.5 * iv**2) * t) / (iv * np.sqrt(t))
     return norm.cdf(d1)
 
-def get_iv_rank(tk):
-    hist = tk.history(period="1y")
-    if hist.empty: return 50
-    vols = hist['Close'].pct_change().rolling(window=20).std() * np.sqrt(252)
-    curr_v = vols.iloc[-1]
-    low, high = vols.min(), vols.max()
-    if high == low: return 50
-    return ((curr_v - low) / (high - low)) * 100
+@st.cache_data(ttl=86400)
+def get_sp500_tickers():
+    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+    table = pd.read_html(url)
+    return table[0]['Symbol'].tolist()
 
 def analyze_ticker_deep(t):
     results = []
-    status_text = st.empty()
-    status_text.markdown(f'<p class="status-yellow">Analyzing {t} Chain...</p>', unsafe_allow_html=True)
-    
     try:
         tk = yf.Ticker(t)
-        cp = tk.fast_info['lastPrice']
-        iv_rank = get_iv_rank(tk)
+        info = tk.info
         
-        for exp in tk.options[:8]: 
+        # QUALITY FILTER (Liquidity & Stability)
+        if info.get('averageVolume', 0) < 1000000: return []
+        
+        cp = tk.fast_info['lastPrice']
+        for exp in tk.options[:5]: 
             days = (pd.to_datetime(exp) - pd.Timestamp.now()).days
-            if not (20 <= days <= 50): continue 
+            if not (20 <= days <= 45): continue 
             
             opts = tk.option_chain(exp).calls
             for _, row in opts.iterrows():
@@ -69,13 +67,11 @@ def analyze_ticker_deep(t):
                 if not (3 <= otm_pct <= 7): continue
                 
                 delta = calculate_delta(cp, row['strike'], days, row['impliedVolatility'])
-                if not (0.20 <= delta <= 0.40): continue
+                if not (0.25 <= delta <= 0.35): continue
                 
                 yield_val = (row['lastPrice'] / cp) * 100
                 monthly_yield = (yield_val / days) * 30
-                
-                tag = "⭐ BEST FIT" if (0.25 <= delta <= 0.35 and 30 <= iv_rank <= 60) else "✅ QUALIFIED"
-                if monthly_yield < 1.0: tag = "⚠️ LOW YIELD"
+                if not (1.0 <= monthly_yield <= 2.5): continue
                 
                 results.append({
                     'Ticker': f"https://finance.yahoo.com/quote/{t}",
@@ -83,38 +79,43 @@ def analyze_ticker_deep(t):
                     'Delta': f"{delta:.2f}",
                     'Expiry': exp,
                     'Strike': f"${row['strike']:.2f}",
-                    'DTE': days,
                     'OTM %': f"{otm_pct:.1f}%",
                     'Mo. Yield': f"{monthly_yield:.2f}%",
-                    'IV Rank': f"{iv_rank:.0f}",
-                    'Status': tag
+                    'Status': "⭐ PRIME"
                 })
+                break # Just find the best one per ticker
     except: pass
-    status_text.empty()
     return results
 
 # --- UI ---
-st.title("🎯 Chris's Command Center")
-if st.button('PUSH ME', key="main_push_button"):
-    tickers = pd.read_csv('watchlist.txt', header=None)[0].tolist()
+st.title("🎯 Chris's S&P 500 Discovery Engine")
+
+if st.button('SCAN ENTIRE S&P 500', key="main_push_button"):
+    tickers = get_sp500_tickers()
     all_res = []
     p_bar = st.progress(0)
+    status_text = st.empty()
+    
     for i, t in enumerate(tickers):
+        status_text.markdown(f'<p class="status-yellow">Checking {i+1}/503: {t}</p>', unsafe_allow_html=True)
         all_res.extend(analyze_ticker_deep(t))
         p_bar.progress((i + 1) / len(tickers))
+        if i % 50 == 0: time.sleep(1) # Rate limit safety
+        
+    status_text.markdown(f'<p class="status-yellow">Scan Complete! Found {len(all_res)} opportunities.</p>', unsafe_allow_html=True)
     st.session_state['results'] = all_res
 
 if 'results' in st.session_state:
-    # Explicitly ordering columns: Delta -> Expiry -> Strike
     df = pd.DataFrame(st.session_state['results'])
-    cols = ['Ticker', 'Price', 'Delta', 'Expiry', 'Strike', 'DTE', 'OTM %', 'Mo. Yield', 'IV Rank', 'Status']
-    df = df[cols] 
-    st.dataframe(df, hide_index=True, use_container_width=True)
+    if not df.empty:
+        st.dataframe(df, hide_index=True, use_container_width=True)
+    else:
+        st.info("No stocks currently match your 1-2% monthly yield and 3-7% OTM criteria.")
 
 st.markdown('<div style="background: rgba(0,0,0,0.7); padding: 20px; border-radius: 15px; border: 1px solid #00BFFF; margin-top: 30px;">', unsafe_allow_html=True)
-st.write("### 🔍 Manual Chain Deep-Dive")
+st.write("### 🔍 Manual Deep-Dive")
 manual_ticker = st.text_input("Enter symbol:", "").upper()
-if manual_ticker and st.button(f"Scan {manual_ticker} Chain", key="manual_check_btn"):
+if manual_ticker and st.button(f"Scan {manual_ticker}", key="manual_check_btn"):
     st.session_state['results'] = analyze_ticker_deep(manual_ticker)
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
