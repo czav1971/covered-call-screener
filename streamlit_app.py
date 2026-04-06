@@ -5,7 +5,6 @@ import numpy as np
 from scipy.stats import norm
 import hmac
 import time
-import requests
 
 st.set_page_config(page_title="Chris's S&P 500 Execution Engine", layout="wide")
 
@@ -34,18 +33,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- ROBUST API SCRAPER ---
-@st.cache_data(ttl=86400)
+# --- HARDCODED TICKER LIST (S&P 500 - Snapshot) ---
 def get_sp500_tickers():
-    try:
-        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        # Using the standard pandas reader but with a fake browser header
-        tables = pd.read_html(requests.get(url, headers={'User-agent': 'Mozilla/5.0'}).text)
-        df = tables[0]
-        return sorted(df['Symbol'].tolist())
-    except Exception as e:
-        st.error(f"Scraper Error: {e}")
-        return []
+    # We use a curated list to bypass all scraping/lxml issues
+    return ["AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "GOOG", "META", "BRK-B", "TSLA", "UNH", "JPM", "LLY", "XOM", "AVGO", "V", "PG", "MA", "COST", "HD", "JNJ", "ABBV", "MRK", "CRM", "BAC", "CVX", "ADBE", "AMD", "PEP", "WMT", "TMO", "WFC", "KO", "DIS", "CSCO", "ACN", "ABT", "LIN", "MCD", "INTC", "DHR", "ORCL", "VZ", "AMGN", "INTU", "CMCSA", "CAT", "IBM", "PFE", "PM", "IBM", "TXN", "MS", "UNP", "GE", "AMAT", "HON", "LOW", "NEE", "GS", "SPGI", "RTX", "AXP", "COP", "BKNG", "PLD", "TJX", "SYK", "ETN", "LMT", "LRCX", "VRTX", "UPS", "MDLZ", "REGN", "T", "MU", "PANW", "PGR", "CI", "C", "ISRG", "BSX", "ZTS", "DE", "ELV", "FI", "CVS", "MMC", "GILD", "CB", "LRCX", "CRV", "BLK", "ADI", "ADP", "SCHW", "MDLZ", "BA", "ADI", "AMT", "BMY", "ICE", "WM", "MO", "CME", "SHW", "ANET", "EQIX", "HCA", "CDNS", "SO", "MCO", "EOG", "PH", "APH", "MAR", "MCK", "GD", "ITW", "AIG", "D", "NSC", "ROP", "PXD", "EMR", "ECL", "MET", "CARR", "DXCM", "A", "O", "TEL", "WELL", "PSA", "DLR", "AZO", "KDP", "STZ", "FDX", "AJG", "CNC", "AON", "ADM", "TRV", "MPC", "WBD", "BK", "IQV", "ORLY", "COF", "DFS", "KHC", "SYY", "EXC", "PAYX", "PCAR", "HLT", "MSI", "AEP", "ROK", "PRU", "CTAS", "MNST", "GWW", "VLO", "FIS", "HUM", "NEM", "NOC", "KR", "OTIS", "OKE", "DDU", "IDXX", "WMB", "MCHP", "CMI", "BKR", "F", "GM", "EBAY", "KMB", "HPQ", "STX", "TGT", "LVS", "WYNN", "CCL"]
 
 def calculate_delta(cp, strike, days, iv):
     if days <= 0 or iv <= 0: return 0
@@ -64,12 +55,12 @@ def analyze_ticker_deep(t):
             opts = tk.option_chain(exp).calls
             for _, row in opts.iterrows():
                 otm_pct = ((row['strike'] / cp) - 1) * 100
-                if not (1 <= otm_pct <= 10): continue # Loosened further
+                if not (2 <= otm_pct <= 10): continue
                 delta = calculate_delta(cp, row['strike'], days, row['impliedVolatility'])
-                if not (0.10 <= delta <= 0.45): continue # Loosened further
+                if not (0.15 <= delta <= 0.40): continue
                 yield_val = (row['lastPrice'] / cp) * 100
                 monthly_yield = (yield_val / days) * 30
-                if monthly_yield >= 0.5: # 6% annual minimum
+                if monthly_yield >= 0.7:
                     results.append({'Ticker': t, 'Price': f"${cp:.2f}", 'Delta': f"{delta:.2f}", 'Expiry': exp, 'Strike': f"${row['strike']:.2f}", 'Mo. Yield': f"{monthly_yield:.2f}%", 'raw_yield': monthly_yield})
                     break
     except: pass
@@ -77,30 +68,21 @@ def analyze_ticker_deep(t):
 
 st.title("🎯 Chris's S&P 500 Discovery Engine")
 
-if st.button('SCAN ENTIRE S&P 500', key="main_push_button"):
+if st.button('SCAN TOP S&P 500', key="main_push_button"):
     tickers = get_sp500_tickers()
+    all_res = []
+    p_bar = st.progress(0)
+    status_text = st.empty()
     
-    if not tickers:
-        st.error("FATAL: No tickers found. Wikipedia might be blocking the request.")
-    else:
-        st.success(f"Successfully loaded {len(tickers)} S&P 500 tickers. Starting scan...")
-        all_res = []
-        p_bar = st.progress(0)
-        status_text = st.empty()
-        
-        for i, t in enumerate(tickers):
-            t_clean = t.replace('.', '-')
-            status_text.markdown(f'<p class="status-yellow">Checking {i+1}/{len(tickers)}: {t_clean}</p>', unsafe_allow_html=True)
-            all_res.extend(analyze_ticker_deep(t_clean))
-            p_bar.progress((i + 1) / len(tickers))
-            # Critical: Added a tiny sleep so the UI can actually update
-            time.sleep(0.05)
+    for i, t in enumerate(tickers):
+        status_text.markdown(f'<p class="status-yellow">Checking {i+1}/{len(tickers)}: {t}</p>', unsafe_allow_html=True)
+        all_res.extend(analyze_ticker_deep(t))
+        p_bar.progress((i + 1) / len(tickers))
+        time.sleep(0.05)
             
-        st.session_state['results'] = all_res
-        st.rerun()
+    st.session_state['results'] = all_res
+    st.rerun()
 
 if 'results' in st.session_state and st.session_state['results']:
     df = pd.DataFrame(st.session_state['results']).sort_values(by='raw_yield', ascending=False)
     st.dataframe(df.drop(columns=['raw_yield']), hide_index=True, use_container_width=True)
-elif 'results' in st.session_state:
-    st.warning("Scan finished, but zero stocks met the criteria. Try loosening filters.")
